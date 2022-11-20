@@ -4,6 +4,10 @@ project(test_paddle_lite)
 set(CMAKE_CXX_STANDARD 17)
 
 
+
+find_package(OpenCV REQUIRED core imgproc highgui)
+include_directories(${OpenCV_INCLUDE_DIRS})
+
 set(LITE_DIR "${CMAKE_CURRENT_LIST_DIR}/paddle_lite_2.11/inference_lite_lib.with_log/cxx")
 set(MKLML_DIR "${CMAKE_CURRENT_LIST_DIR}/paddle_lite_2.11/inference_lite_lib.with_log/third_party/mklml")
 
@@ -32,3 +36,4 @@ add_executable(test_paddle_lite main.cpp)
 target_link_libraries(test_paddle_lite paddle_lite_lib)
 target_link_libraries(test_paddle_lite libiomp5)
 target_link_libraries(test_paddle_lite libmklml)
+target_link_libraries(test_paddle_lite ${OpenCV_LIBS})
