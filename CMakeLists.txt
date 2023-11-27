@@ -8,8 +8,8 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(OpenCV REQUIRED core imgproc highgui)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-set(LITE_DIR "${CMAKE_CURRENT_LIST_DIR}/paddle_lite_2.11/inference_lite_lib.with_log/cxx")
-set(MKLML_DIR "${CMAKE_CURRENT_LIST_DIR}/paddle_lite_2.11/inference_lite_lib.with_log/third_party/mklml")
+set(LITE_DIR "${CMAKE_CURRENT_LIST_DIR}/paddle_lite_2.12/inference_lite_lib.with_log/cxx")
+set(MKLML_DIR "${CMAKE_CURRENT_LIST_DIR}/paddle_lite_2.12/inference_lite_lib.with_log/third_party/mklml")
 set(OCR_DIR "${CMAKE_CURRENT_LIST_DIR}/paddle_ocr/paddle_ocr_lib")
 
 
