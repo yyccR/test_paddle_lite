@@ -5,6 +5,10 @@
 #include "opencv2/opencv.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/highgui.hpp"
+#include "paddle_place.h"
+#include "cls_process.h"
+#include "crnn_process.h"
+#include "db_post_process.h"
 
 using namespace paddle::lite_api;
 
