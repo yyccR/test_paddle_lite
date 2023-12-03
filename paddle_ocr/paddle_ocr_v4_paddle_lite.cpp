@@ -6,25 +6,94 @@
 #include "opencv2/imgproc.hpp"
 #include "opencv2/highgui.hpp"
 #include "paddle_place.h"
+#include "paddle_place.h"
 #include "cls_process.h"
 #include "crnn_process.h"
 #include "db_post_process.h"
 
+
 using namespace paddle::lite_api;
 
+// fill tensor with mean and scale and trans layout: nhwc -> nchw, neon speed up
+//void NeonMeanScale(const float *din, float *dout, int size,
+//                   const std::vector<float> mean,
+//                   const std::vector<float> scale) {
+//    if (mean.size() != 3 || scale.size() != 3) {
+//        std::cerr << "[ERROR] mean or scale size must equal to 3" << std::endl;
+//        exit(1);
+//    }
+//    float32x4_t vmean0 = vdupq_n_f32(mean[0]);
+//    float32x4_t vmean1 = vdupq_n_f32(mean[1]);
+//    float32x4_t vmean2 = vdupq_n_f32(mean[2]);
+//    float32x4_t vscale0 = vdupq_n_f32(scale[0]);
+//    float32x4_t vscale1 = vdupq_n_f32(scale[1]);
+//    float32x4_t vscale2 = vdupq_n_f32(scale[2]);
+//
+//    float *dout_c0 = dout;
+//    float *dout_c1 = dout + size;
+//    float *dout_c2 = dout + size * 2;
+//
+//    int i = 0;
+//    for (; i < size - 3; i += 4) {
+//        float32x4x3_t vin3 = vld3q_f32(din);
+//        float32x4_t vsub0 = vsubq_f32(vin3.val[0], vmean0);
+//        float32x4_t vsub1 = vsubq_f32(vin3.val[1], vmean1);
+//        float32x4_t vsub2 = vsubq_f32(vin3.val[2], vmean2);
+//        float32x4_t vs0 = vmulq_f32(vsub0, vscale0);
+//        float32x4_t vs1 = vmulq_f32(vsub1, vscale1);
+//        float32x4_t vs2 = vmulq_f32(vsub2, vscale2);
+//        vst1q_f32(dout_c0, vs0);
+//        vst1q_f32(dout_c1, vs1);
+//        vst1q_f32(dout_c2, vs2);
+//
+//        din += 12;
+//        dout_c0 += 4;
+//        dout_c1 += 4;
+//        dout_c2 += 4;
+//    }
+//    for (; i < size; i++) {
+//        *(dout_c0++) = (*(din++) - mean[0]) * scale[0];
+//        *(dout_c1++) = (*(din++) - mean[1]) * scale[1];
+//        *(dout_c2++) = (*(din++) - mean[2]) * scale[2];
+//    }
+//}
+
+
+
+void MeanScale(const float *din, float *dout, int size,
+               const std::vector<float> mean,
+               const std::vector<float> scale) {
+    if (mean.size() != 3 || scale.size() != 3) {
+        std::cerr << "[ERROR] mean or scale size must equal to 3" << std::endl;
+        exit(1);
+    }
+
+    for (int i = 0; i < size; ++i) {
+        dout[i] = (din[i] - mean[0]) * scale[0];
+    }
+
+    for (int i = size; i < 2 * size; ++i) {
+        dout[i] = (din[i] - mean[1]) * scale[1];
+    }
+
+    for (int i = 2 * size; i < 3 * size; ++i) {
+        dout[i] = (din[i] - mean[2]) * scale[2];
+    }
+}
 
 int test_paddle_ocr_v4_paddle_lite() {
     std::string det_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v4/ch_PP-OCRv4_det_opt.nb");
     std::string rec_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v4/ch_PP-OCRv4_rec_opt.nb");
     std::string cls_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v4/ch_ppocr_mobile_v2.0_cls_opt.nb");
+    std::string ppocr_keys_v1_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/paddle_ocr_lib/ppocr_keys_v1.txt");
     std::string image_file("/Users/yang/CLionProjects/test_paddle_lite/data/images/insurance.png");
 
     cv::Mat image = cv::imread(image_file, cv::IMREAD_COLOR);
     cv::Mat image_resize;
-    cv::resize(image, image_resize, cv::Size(480, 480));
+    cv::resize(image, image_resize, cv::Size(640, 640));
     image_resize.convertTo(image_resize, CV_32F, 1.0/255.0);
-    float w_scale = (float)image.cols / (float)480;
-    float h_scale = (float)image.rows / (float)480;
+    float w_scale = (float)image.cols / (float)640;
+    float h_scale = (float)image.rows / (float)640;
 
 //    cv::transposeND(image, {2,0,1}, image_t);
 //    cv::imshow("", image);
@@ -38,6 +107,53 @@ int test_paddle_ocr_v4_paddle_lite() {
     config.set_model_from_file(det_model_file);
     // 3. Create PaddlePredictor by MobileConfig
     std::shared_ptr<PaddlePredictor> predictor = CreatePaddlePredictor<MobileConfig>(config);
+
+    // input
+    std::unique_ptr<Tensor> input_tensor0(std::move(predictor->GetInput(0)));
+    input_tensor0->Resize({1, 3, image_resize.rows, image_resize.cols});
+    auto *data0 = input_tensor0->mutable_data<float>();
+    std::vector<float> mean = {0.485f, 0.456f, 0.406f};
+    std::vector<float> scale = {1 / 0.229f, 1 / 0.224f, 1 / 0.225f};
+    const float *dimg = reinterpret_cast<const float *>(image_resize.data);
+//    NeonMeanScale(dimg, data0, image_resize.rows * image_resize.cols, mean, scale);
+    MeanScale(dimg, data0, image_resize.rows * image_resize.cols, mean, scale);
+
+    // infer
+    predictor->Run();
+
+    // output
+    std::unique_ptr<const Tensor> output_tensor0(
+            std::move(predictor->GetOutput(0)));
+    auto *predict_batch = output_tensor0->data<float>();
+    auto predict_shape = output_tensor0->shape();
+    std::cout << "output shape: [" << predict_shape[0] << ","
+                                   << predict_shape[1] << ","
+                                   << predict_shape[2] << ","
+                                   << predict_shape[3] << "]" << std::endl;
+
+    // decode
+    auto charactor_dict = ReadDict(ppocr_keys_v1_file);
+    std::string str_res;
+    int argmax_idx;
+    int last_index = 0;
+    float score = 0.f;
+    int count = 0;
+    float max_value = 0.0f;
+
+    for (int n = 0; n < predict_shape[1]; n++) {
+        argmax_idx = int(Argmax(&predict_batch[n * predict_shape[2]],
+                                &predict_batch[(n + 1) * predict_shape[2]]));
+        max_value =
+                float(*std::max_element(&predict_batch[n * predict_shape[2]],
+                                        &predict_batch[(n + 1) * predict_shape[2]]));
+        if (argmax_idx > 0 && (!(n > 0 && argmax_idx == last_index))) {
+            score += max_value;
+            count += 1;
+            str_res += charactor_dict[argmax_idx];
+        }
+        std::cout << str_res << std::endl;
+        last_index = argmax_idx;
+    }
 
     return 0;
 }
