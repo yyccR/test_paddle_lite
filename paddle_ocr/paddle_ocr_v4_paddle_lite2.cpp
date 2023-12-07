@@ -90,7 +90,8 @@ void MeanScale(const float *din, float *dout, int size,
 std::shared_ptr<PaddlePredictor> loadModel(std::string model_file, int num_threads) {
     MobileConfig config;
     config.set_model_from_file(model_file);
-    config.set_threads(num_threads);
+//    config.set_x86_math_num_threads(num_threads);
+//    config.set_threads(num_threads);
     std::shared_ptr<PaddlePredictor> predictor =
             CreatePaddlePredictor<MobileConfig>(config);
     return predictor;
@@ -478,19 +479,26 @@ void test_paddle_ocr_v4_paddle_lite(){
 //    std::string det_config_path = argv[10];
 //    std::string dict_path = argv[11];
 
-//    std::string det_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_PP-OCRv3_det_opt.nb");
-//    std::string rec_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_PP-OCRv3_rec_opt.nb");
-//    std::string cls_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_ppocr_mobile_v2.0_cls_opt.nb");
-//    std::string ppocr_keys_v1_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/paddle_ocr_lib/ppocr_keys_v1.txt");
-//    std::string config_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/paddle_ocr_lib/config.txt");
-//    std::string image_file("/Users/yang/CLionProjects/test_paddle_lite/data/images/insurance.png");
-
-    std::string det_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v4/ch_PP-OCRv4_det_opt.nb");
-    std::string rec_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v4/ch_PP-OCRv4_rec_opt.nb");
-    std::string cls_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v4/ch_ppocr_mobile_v2.0_cls_opt.nb");
+    std::string det_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_PP-OCRv3_det_opt.nb");
+    std::string rec_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_PP-OCRv3_rec_opt.nb");
+    std::string cls_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_ppocr_mobile_v2.0_cls_opt.nb");
     std::string ppocr_keys_v1_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/paddle_ocr_lib/ppocr_keys_v1.txt");
     std::string config_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/paddle_ocr_lib/config.txt");
     std::string image_file("/Users/yang/CLionProjects/test_paddle_lite/data/images/insurance.png");
+
+//    std::string det_model_file("./ch_PP-OCRv4_det_opt.nb");
+//    std::string rec_model_file("./ch_PP-OCRv4_rec_opt.nb");
+//    std::string cls_model_file("./ch_ppocr_mobile_v2.0_cls_opt.nb");
+//    std::string ppocr_keys_v1_file("./ppocr_keys_v1.txt");
+//    std::string config_file("./config.txt");
+//    std::string image_file("./test_ocr.jpeg");
+
+//    std::string det_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v4/ch_PP-OCRv4_det_opt.nb");
+//    std::string rec_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v4/ch_PP-OCRv4_rec_opt.nb");
+//    std::string cls_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v4/ch_ppocr_mobile_v2.0_cls_opt.nb");
+//    std::string ppocr_keys_v1_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/paddle_ocr_lib/ppocr_keys_v1.txt");
+//    std::string config_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/paddle_ocr_lib/config.txt");
+//    std::string image_file("/Users/yang/CLionProjects/test_paddle_lite/data/images/insurance.png");
 
 
 //    if (strcmp(argv[6], "FP32") != 0 && strcmp(argv[6], "INT8") != 0) {
