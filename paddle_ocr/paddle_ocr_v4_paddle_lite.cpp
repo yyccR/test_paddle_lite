@@ -10,6 +10,8 @@
 #include "cls_process.h"
 #include "crnn_process.h"
 #include "db_post_process.h"
+#include <opencv2/opencv.hpp>
+#include <opencv2/freetype.hpp>
 
 using namespace paddle::lite_api;
 
@@ -58,7 +60,8 @@ using namespace paddle::lite_api;
 //}
 
 cv::Mat Visualization(cv::Mat srcimg,
-                      std::vector<std::vector<std::vector<int>>> boxes) {
+                      std::vector<std::vector<std::vector<int>>> boxes,
+                      std::vector<std::string> rec_text) {
     cv::Point rook_points[boxes.size()][4];
     for (int n = 0; n < boxes.size(); n++) {
         for (int m = 0; m < boxes[0].size(); m++) {
@@ -66,16 +69,24 @@ cv::Mat Visualization(cv::Mat srcimg,
                                           static_cast<int>(boxes[n][m][1]));
         }
     }
+    // 初始化 FreeType
+    cv::Ptr<cv::freetype::FreeType2> ft2;
+    ft2 = cv::freetype::createFreeType2();
+    ft2->loadFontData( "/Users/yang/CLionProjects/test_paddle_lite/data/fonts/wenzhangshufang.ttf" , 0);
+
     cv::Mat img_vis;
     srcimg.copyTo(img_vis);
     for (int n = 0; n < boxes.size(); n++) {
         const cv::Point *ppt[1] = {rook_points[n]};
         int npt[] = {4};
         cv::polylines(img_vis, ppt, npt, 1, 1, CV_RGB(0, 255, 0), 2, 8, 0);
+        // 添加文本
+        ft2->putText(img_vis, rec_text[n], rook_points[n][0], cv::FONT_HERSHEY_SIMPLEX, cv::Scalar(0, 255, 0), 2, cv::LINE_AA, false);
+
     }
 
     cv::imwrite("/Users/yang/CLionProjects/test_paddle_lite/data/images/vis.jpg", img_vis);
-    std::cout << "The detection visualized image saved in ./vis.jpg" << std::endl;
+    std::cout << "The detection visualized image saved in /Users/yang/CLionProjects/test_paddle_lite/data/images/vis.jpg" << std::endl;
     return img_vis;
 }
 
@@ -462,7 +473,7 @@ int test_paddle_ocr_v4_paddle_lite() {
     std::cout << "rec size: " << rec_text.size() << std::endl;
 
 
-    auto img_vis = Visualization(img, boxes);
+    auto img_vis = Visualization(img, boxes, rec_text);
 
     //// print recognized text
     for (int i = 0; i < rec_text.size(); i++) {

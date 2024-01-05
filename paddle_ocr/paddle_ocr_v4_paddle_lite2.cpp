@@ -15,6 +15,8 @@
 #include <chrono>
 #include "paddle_api.h" // NOLINT
 #include "paddle_place.h"
+#include <opencv2/opencv.hpp>
+#include <opencv2/freetype.hpp>
 
 #include "cls_process.h"
 #include "crnn_process.h"
@@ -98,7 +100,8 @@ std::shared_ptr<PaddlePredictor> loadModel(std::string model_file, int num_threa
 }
 
 cv::Mat Visualization(cv::Mat srcimg,
-                      std::vector<std::vector<std::vector<int>>> boxes) {
+                      std::vector<std::vector<std::vector<int>>> boxes,
+                      std::vector<std::string> rec_text) {
     cv::Point rook_points[boxes.size()][4];
     for (int n = 0; n < boxes.size(); n++) {
         for (int m = 0; m < boxes[0].size(); m++) {
@@ -106,16 +109,28 @@ cv::Mat Visualization(cv::Mat srcimg,
                                           static_cast<int>(boxes[n][m][1]));
         }
     }
+//     初始化 FreeType
+//    cv::Ptr<cv::freetype::FreeType2> ft2;
+//    ft2 = cv::freetype::createFreeType2();
+//    ft2->loadFontData( "/Users/yang/CLionProjects/test_paddle_lite/data/fonts/wenzhangshufang.ttf" , 0);
+
     cv::Mat img_vis;
     srcimg.copyTo(img_vis);
     for (int n = 0; n < boxes.size(); n++) {
         const cv::Point *ppt[1] = {rook_points[n]};
         int npt[] = {4};
         cv::polylines(img_vis, ppt, npt, 1, 1, CV_RGB(0, 255, 0), 2, 8, 0);
+        // 添加文本
+        cv::putText(img_vis, rec_text[boxes.size() - n - 1], rook_points[n][0], cv::FONT_HERSHEY_SIMPLEX, 1, CV_RGB(0, 255, 0), 1, cv::LINE_AA);
+//        int fontHeight = 24;
+//        int baseline = 0;
+//        cv::Scalar textColor(0, 255, 0);  // 文本颜色
+//        ft2->putText(img_vis, rec_text[boxes.size() - n - 1], rook_points[n][0], fontHeight, textColor,1, cv::LINE_AA, false);
+
     }
 
     cv::imwrite("/Users/yang/CLionProjects/test_paddle_lite/data/images/vis.jpg", img_vis);
-    std::cout << "The detection visualized image saved in ./vis.jpg" << std::endl;
+    std::cout << "The detection visualized image saved in /Users/yang/CLionProjects/test_paddle_lite/data/images/vis.jpg" << std::endl;
     return img_vis;
 }
 
@@ -479,12 +494,19 @@ void test_paddle_ocr_v4_paddle_lite(){
 //    std::string det_config_path = argv[10];
 //    std::string dict_path = argv[11];
 
-    std::string det_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_PP-OCRv3_det_opt.nb");
-    std::string rec_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_PP-OCRv3_rec_opt.nb");
-    std::string cls_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_ppocr_mobile_v2.0_cls_opt.nb");
+//    std::string det_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_PP-OCRv3_det_opt.nb");
+//    std::string rec_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_PP-OCRv3_rec_opt.nb");
+//    std::string cls_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_ppocr_mobile_v2.0_cls_opt.nb");
+//    std::string ppocr_keys_v1_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/paddle_ocr_lib/ppocr_keys_v1.txt");
+//    std::string config_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/paddle_ocr_lib/config.txt");
+//    std::string image_file("/Users/yang/CLionProjects/test_paddle_lite/data/images/insurance.png");
+    std::string det_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v4/ch_PP-OCRv4_det_opt.nb");
+    std::string rec_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v4/ch_PP-OCRv4_rec_opt.nb");
+    std::string cls_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v4/ch_ppocr_mobile_v2.0_cls_opt.nb");
     std::string ppocr_keys_v1_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/paddle_ocr_lib/ppocr_keys_v1.txt");
     std::string config_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/paddle_ocr_lib/config.txt");
     std::string image_file("/Users/yang/CLionProjects/test_paddle_lite/data/images/insurance.png");
+
 
 //    std::string det_model_file("./ch_PP-OCRv4_det_opt.nb");
 //    std::string rec_model_file("./ch_PP-OCRv4_rec_opt.nb");
@@ -536,7 +558,7 @@ void test_paddle_ocr_v4_paddle_lite(){
         std::vector<double> det_times;
         auto boxes = RunDetModel(det_predictor, srcimg, Config, &det_times);
 
-        auto img_vis = Visualization(srcimg, boxes);
+//        auto img_vis = Visualization(srcimg, boxes);
 
         std::vector<std::string> rec_text;
         std::vector<float> rec_text_score;
@@ -544,6 +566,8 @@ void test_paddle_ocr_v4_paddle_lite(){
         std::vector<double> rec_times;
         RunRecModel(boxes, srcimg, rec_predictor, rec_text, rec_text_score,
                     charactor_dict, cls_predictor, use_direction_classify, &rec_times, rec_image_height);
+
+        auto img_vis = Visualization(srcimg, boxes, rec_text);
 
         //// visualization
 
@@ -584,172 +608,3 @@ void test_paddle_ocr_v4_paddle_lite(){
 //        autolog_rec.report();
 //    }
 }
-
-void det(int argc, char **argv) {
-    std::string det_model_file = argv[2];
-    std::string runtime_device = argv[3];
-    std::string precision = argv[4];
-    std::string num_threads = argv[5];
-    std::string batchsize = argv[6];
-    std::string img_dir = argv[7];
-    std::string det_config_path = argv[8];
-
-    if (strcmp(argv[4], "FP32") != 0 && strcmp(argv[4], "INT8") != 0) {
-        std::cerr << "Only support FP32 or INT8." << std::endl;
-        exit(1);
-    }
-
-    std::vector<cv::String> cv_all_img_names;
-    cv::glob(img_dir, cv_all_img_names);
-
-    //// load config from txt file
-    auto Config = LoadConfigTxt(det_config_path);
-
-    auto det_predictor = loadModel(det_model_file, std::stoi(num_threads));
-
-    std::vector<double> time_info = {0, 0, 0};
-    for (int i = 0; i < cv_all_img_names.size(); ++i) {
-        std::cout << "The predict img: " << cv_all_img_names[i] << std::endl;
-        cv::Mat srcimg = cv::imread(cv_all_img_names[i], cv::IMREAD_COLOR);
-
-        if (!srcimg.data) {
-            std::cerr << "[ERROR] image read failed! image path: " << cv_all_img_names[i] << std::endl;
-            exit(1);
-        }
-
-        std::vector<double> times;
-        auto boxes = RunDetModel(det_predictor, srcimg, Config, &times);
-
-        //// visualization
-        auto img_vis = Visualization(srcimg, boxes);
-        std::cout << boxes.size() << " bboxes have detected:" << std::endl;
-
-        for (int i=0; i<boxes.size(); i++){
-            std::cout << "The " << i << " box:" << std::endl;
-            for (int j=0; j<4; j++){
-                for (int k=0; k<2; k++){
-                    std::cout << boxes[i][j][k] << "\t";
-                }
-            }
-            std::cout << std::endl;
-        }
-        time_info[0] += times[0];
-        time_info[1] += times[1];
-        time_info[2] += times[2];
-    }
-
-//    if (strcmp(argv[9], "True") == 0) {
-//        AutoLogger autolog(det_model_file,
-//                           runtime_device,
-//                           std::stoi(num_threads),
-//                           std::stoi(batchsize),
-//                           "dynamic",
-//                           precision,
-//                           time_info,
-//                           cv_all_img_names.size());
-//        autolog.report();
-//    }
-}
-
-void test_paddle_ocr_v4_rec() {
-//    std::string rec_model_file = argv[2];
-//    std::string runtime_device = argv[3];
-//    std::string precision = argv[4];
-//    std::string num_threads = argv[5];
-//    std::string batchsize = argv[6];
-//    std::string img_dir = argv[7];
-//    std::string dict_path = argv[8];
-//    std::string config_path = argv[9];
-
-//    if (strcmp(argv[4], "FP32") != 0 && strcmp(argv[4], "INT8") != 0) {
-//        std::cerr << "Only support FP32 or INT8." << std::endl;
-//        exit(1);
-//    }
-    std::string det_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_PP-OCRv3_det_opt.nb");
-    std::string rec_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_PP-OCRv3_rec_opt.nb");
-    std::string cls_model_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/v3/ch_ppocr_mobile_v2.0_cls_opt.nb");
-    std::string ppocr_keys_v1_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/paddle_ocr_lib/ppocr_keys_v1.txt");
-    std::string config_file("/Users/yang/CLionProjects/test_paddle_lite/paddle_ocr/paddle_ocr_lib/config.txt");
-    std::string image_file("/Users/yang/CLionProjects/test_paddle_lite/data/crop_images/102_crop_img.jpg");
-
-
-    auto Config = LoadConfigTxt(config_file);
-    int rec_image_height = int(Config["rec_image_height"]);
-
-    std::vector<cv::String> cv_all_img_names = {image_file};
-//    cv::glob("/Users/yang/CLionProjects/test_paddle_lite/data/crop_images", cv_all_img_names);
-
-    auto charactor_dict = ReadDict(ppocr_keys_v1_file);
-    charactor_dict.insert(charactor_dict.begin(), "#"); // blank char for ctc
-    charactor_dict.push_back(" ");
-
-    auto rec_predictor = loadModel(rec_model_file, 1);
-
-    std::shared_ptr<PaddlePredictor> cls_predictor;
-
-    std::vector<double> time_info = {0, 0, 0};
-    for (int i = 0; i < cv_all_img_names.size(); ++i) {
-        std::cout << "The predict img: " << cv_all_img_names[i] << std::endl;
-        cv::Mat srcimg = cv::imread(cv_all_img_names[i], cv::IMREAD_COLOR);
-
-        if (!srcimg.data) {
-            std::cerr << "[ERROR] image read failed! image path: " << cv_all_img_names[i] << std::endl;
-            exit(1);
-        }
-
-        int width = srcimg.cols;
-        int height = srcimg.rows;
-        std::vector<int> upper_left = {0, 0};
-        std::vector<int> upper_right = {width, 0};
-        std::vector<int> lower_right = {width, height};
-        std::vector<int> lower_left  = {0, height};
-        std::vector<std::vector<int>> box = {upper_left, upper_right, lower_right, lower_left};
-        std::vector<std::vector<std::vector<int>>> boxes = {box};
-
-        std::vector<std::string> rec_text;
-        std::vector<float> rec_text_score;
-        std::vector<double> times;
-        RunRecModel(boxes, srcimg, rec_predictor, rec_text, rec_text_score,
-                    charactor_dict, cls_predictor, 0, &times, rec_image_height);
-
-        //// print recognized text
-        for (int i = 0; i < rec_text.size(); i++) {
-            std::cout << i << "\t" << rec_text[i] << "\t" << rec_text_score[i]
-                      << std::endl;
-        }
-        time_info[0] += times[0];
-        time_info[1] += times[1];
-        time_info[2] += times[2];
-    }
-    // TODO: support autolog
-//    if (strcmp(argv[9], "True") == 0) {
-//        AutoLogger autolog(rec_model_file,
-//                           runtime_device,
-//                           std::stoi(num_threads),
-//                           std::stoi(batchsize),
-//                           "dynamic",
-//                           precision,
-//                           time_info,
-//                           cv_all_img_names.size());
-//        autolog.report();
-//    }
-}
-
-//int main(int argc, char **argv) {
-//    check_params(argc, argv);
-//    std::cout << "mode: " << argv[1] << endl;
-//
-//    if (strcmp(argv[1], "system") == 0) {
-//        system(argv);
-//    }
-//
-//    if (strcmp(argv[1], "det") == 0) {
-//        det(argc, argv);
-//    }
-//
-//    if (strcmp(argv[1], "rec") == 0) {
-//        rec(argc, argv);
-//    }
-//
-//    return 0;
-//}
